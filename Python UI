@@ -1,0 +1,145 @@
+from tkinter.ttk import *
+import tkinter as tk
+import serial
+
+BTN_WIDTH = 20
+BTN_HEIGHT = 10
+BTN_COLR = "white"
+BTN_SELECT_COLOR = 'black'
+BRAKE_COLOR = "B6244f"
+# valid messages to arduino
+FORWARD_MSG = b'1'
+BACK_MSG = b'2'
+LEFT_MSG = b'4'
+RIGHT_MSG = b'3'
+STOP_DRIVE_MSG = b'5'
+SALT_ON_MSG = b'6'
+SALT_OFF_MSG = b'7'
+
+LED_RAINBOW = b"rainbow"
+LED_FIRE = b"fire"
+
+class GridFunctions:
+  def __init__(self):
+    self.last_msg = STOP_DRIVE_MSG
+    self.last_salt_msg = SALT_OFF_MSG
+    self.led_mode = LED_RAINBOW
+    self.root = tk.TK()
+    self.root.configure(bg="white")
+
+    #create buttons to be shown in display
+    self.upBtn = tk.Button(self.root, text = 'Forward', command = self.forward, width = BTN_WIDTH, height = BTN_HEIGHT, bg = BTN_COLOR, fg = 'black', borderwidth = 1)
+    self.downBtn = tk.Button(self.root, text = 'Back', command = self.backward, width = BTN_WIDTH, height = BTN_HEIGHT, bg = BTN_COLOR, fg = 'black', borderwidth = 1)
+    self.leftBtn = tk.Button(self.root, text = 'Left', command = self.left, width = BTN_WIDTH, height = BTN_HEIGHT, bg = BTN_COLOR, fg = 'black', borderwidth = 1)
+    self.rightBtn = tk.Button(self.root, text = 'Right', command = self.right, width = BTN_WIDTH, height = BTN_HEIGHT, bg = BTN_COLOR, fg = 'black', borderwidth = 1)
+    self.stopDriveBtn = tk.Button(self.root, text = 'Brake', command = self.stopDrive, width = BTN_WIDTH, height = BTN_HEIGHT, bg = BTN_COLOR, fg = 'black', borderwidth = 1)
+
+    self.create_placeholder().grid(row=1, column=1)
+    self.create_placeholder().grid(row=2, column=1)
+    self.upBtn.grid(row = 2, column = 2)
+    self.leftBtn.grid(row = 3, column = 1)
+    self.stopDriveBtn.grid(row = 3, column = 2)
+    self.downBtn.grid(row = 4, column = 2) 
+    self.rightBtn.grid(row = 3, column = 3)
+
+    self.saltBtn = tk.Button(self.root, text = 'Salt', command = self.toggleSalt, width = BTN_WIDTH, height = BTN_HEIGHT, bg = 'white', fg = 'black', borderwidth = 1)
+
+    self.btns = [self.downBtn, self.upBtn, self.leftBtn, self.rightBtn, self.saltBtn]
+    self.driveBtns = [self.downBtn, self.upBtn, self.leftBtn, self.rightBtn, self.stopDriveBtn]
+
+    self.root.bind("<KeyPress>", self.keydown)
+
+    self.placeholder = tk.Frame(self.root, background = 'white', width = 50, height = 50)
+
+    self.create_placeholder().grid(row=5, column=2)
+    self.saltBtn.grid(row=6, column=2)
+    self.root.focus_set()
+
+    #ports that show when bluetooth is connected to windows machine
+    self.sOutCom = "COM3"
+    self.sInCom = "COM4"
+    # baudRate for bluetooth
+    self.BTbaudrate = 9600
+    # initialize serial ports
+    self.sOut = serial.Serial(
+      port = self.sOutCom,
+      baudrate = self.BTbaudrate
+    )
+    self.sIn = serial.Serial(
+      port = self.sInCom,
+      baudrate = self.BTbaudrate
+    )
+
+  def sendMsg(self, msg):
+    if self.last_msg != msg:
+      self.sOut.write(msg)
+      print(f"Sent message! {msg}")
+    self.last_msg = msg
+
+  def create_placeholder(self):
+    return tk.Frame(self.root, background = 'white', width = 50, height = 50)
+
+  def forward(self):
+    self.sendMsg(FORWARD_MSG)
+    self.unselectBtns(self.driveBtns)
+    self.upBtn.configure(bg = BTN_SELECT_COLOR, fg = 'white')
+
+  def backward(self):
+    self.sendMsg(BACK_MSG)
+    self.unselectBtns(self.driveBtns)
+    self.downBtn.configure(bg = BTN_SELECT_COLOR, fg = 'white')
+
+  def left(self):
+    self.sendMsg(LEFT_MSG)
+    self.unselectBtns(self.driveBtns)
+    self.leftBtn.configure(bg = BTN_SELECT_COLOR, fg = 'white')
+
+  def right(self):
+    self.sendMsg(RIGHT_MSG)
+    self.unselectBtns(self.driveBtns)
+    self.rightBtn.configure(bg = BTN_SELECT_COLOR, fg = 'white')
+
+  def toggleSalt(self):
+    if self.last_salt_msg == SALT_ON_MSG:
+      self.sendMsg(SALT_OFF_MSG)
+      self.last_salt_msg = SALT_OFF_MSG
+      self.saltBtn.configure(bg = 'white', fg = 'black')
+    else:
+      self.sendMsg(SALT_ON_MSG)
+      self.last_salt_msg = SALT_ON_MSG
+      self.saltBtn.configure(bg = 'black', fg = 'white')
+
+  def stopDrive(self):
+    self.sendMsg(STOP_DRIVE_MSG)
+    self.unselectBtns(self.driveBtns)
+    self.stopDriveBtns.configure(bg=BRAKE_COLOR, fg='white')
+
+  def keydown(self, e):
+    print("Key pressed: ", e.char)
+    if e.char == 'w':
+      self.forward()
+    elif e.char == 'a':
+      self.left()
+    elif e.char == 's':
+      self.backward()
+    elif e.char == 'd':
+      self.right()
+    elif e.char == 'o':
+      self.toggleSalt()
+    elif e.char == 'b':
+      self.stopDrive()
+    else:
+      print("not a valid input")
+
+  def unselectBtns(self, buttons_list):
+    for button buttons_list:
+      button.configure(bg=BTN_COLOR, fg='black')
+
+  def mainLoop(self):
+    self.root.mainloop()
+
+def main():
+  gridFunc = GridFunctions()
+  gridFunc.mainLoop()
+
+main()
