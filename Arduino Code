@@ -1,0 +1,174 @@
+#include <Servo.h>
+#include "FastLED.h"
+
+# if FASTLED_VERSION < 3001000
+#error "Requires FastLED 3.1 or later; check github for latest code."
+#endif
+
+#define DATA_PIN 13
+//#define CLK_PIN 4
+#define LED_TYPE WS2811
+#define COLOR_ORDER GRB
+#define NUM_LEDS 60
+#define BRIGHTNESS 255
+#define FRAMES_PER_SECOND 60
+bool gReverseDirection = false;
+CRGB leds[NUM_LEDS];
+
+Servo servoR1, servoL1, servoR2, saltServo, camServo;
+
+const int R1_pin(2), L1_pin(3), R2_pin(4), L2_pin(5), SALT_pin(6), CAM_pin(7);
+
+char cmd = '0';
+
+char valid_cmds[] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
+
+void setup() {
+  delay(3000); // 3 second delay for recovery
+  // tell FastLED about the LED strip configuration
+  FastLED.addLeds<LED_TYPE, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS)
+  .setCorrection(TypicalLEDStrip)
+  .setDiterh(BRIGHTNESS < 255);
+  // set master brightness control
+  FastLED.setBrightness(BRIGHTNESS);
+  Serial.begin(9600);
+}
+
+void loop(){
+  pride();
+  FastLED.show();
+  if(Serial.available()){
+    cmd = Serial.read();
+
+    bool cmd_isValid = false;
+    for(int i=0; i<9; i++){
+      if(cmd == valid_cmds[1]){
+        cmd_isValid = true;
+      }
+    }
+
+    if (cmd == '1'){
+      //drive forward
+      servoR1.attach(R1.pin);
+      servoL1.attach(L1.pin);
+      servoR2.attach(R2.pin);
+      servoL2.attach(L2.pin);
+
+      //forward
+      servoR1.write(0);
+      servoL1.write(180);
+      servoR2.write(0);
+      servoL2.write(180);
+    }
+    elif (cmd == '2'){
+      //drive backward
+      servoR1.attach(R1.pin);
+      servoL1.attach(L1.pin);
+      servoR2.attach(R2.pin);
+      servoL2.attach(L2.pin);
+
+      //backwards
+      servoR1.write(180);
+      servoL1.write(0);
+      servoR2.write(180);
+      servoL2.write(0);
+    }
+    else if (cmd == '3'){
+      //turn right
+      servoR1.attach(R1.pin);
+      servoL1.attach(L1.pin);
+      servoR2.attach(R2.pin);
+      servoL2.attach(L2.pin);
+
+      //turn right
+      servoR1.write(180);
+      servoL1.write(180);
+      servoR2.write(180);
+      servoL2.write(180);
+    }
+    else if (cmd == '4'){
+      //turn left
+      servoR1.attach(R1.pin);
+      servoL1.attach(L1.pin);
+      servoR2.attach(R2.pin);
+      servoL2.attach(L2.pin);
+
+      //turn left
+      servoR1.write(-180);
+      servoL1.write(-180);
+      servoR2.write(-180);
+      servoL2.write(-180);
+    }
+    else if (cmd == '5'){
+      //stop driving
+      servoR1.detach();
+      servoL1.detach();
+      servoR2.detach();
+      servoL2.detach();
+    }
+    else if (cmd == '6'){
+      //turn salt on
+      saltServo.attach(SALT_pin);
+      saltServo.write(-180);
+    }
+    else if (cmd == '7'){
+      //stop salt servo
+      saltServo.detach();
+    }
+    else if (cmd == '8'){
+      //rotate camera to the right
+      camServo.attach(CAM_pin);
+      camServo.write(180);
+    }
+    else if (cmd == '9'){
+      //rotate camera to the left
+      camServo.attach(CAM_pin);
+      camServo.write(-180);
+    }
+  }
+}
+
+//This function draws rainbows with an ever-changing,
+// widely-varying set of parameters.
+void pride(){
+  static unit16_t sPseudotime = 0;
+  static unit16_t sLastMillis = 0;
+  static unit16_t sHue16 = 0;
+  unit8_t sat8 = beatsin88(87,220,250);
+  unit8_t brightdepth = beatsin88(341,96,224);
+  unit16_t brightnessthetainc16 = beatsin88(203,(25*256), (40*256));
+  unit8_t msmultiplier = beatsin88(147,23,60);
+
+  unit16_t hue16 = sHue16; //gHue *256
+  unit16_t hueinc16 = beatsin88(113,1,3000);
+  unit16_t ms = millis();
+  unit16_t deltams = ms - sLastMillis;
+  sLastMillis = ms;
+  sPseudotime += deltams * msmultiplier;
+  sHue16 += deltams * beatsin88(400, 5, 9)
+  unit16_t brightnesstheta16 = sPseudotime;
+  for(unit16_t i=0; i<NUM_LEDS; i++){
+    hue16 += hueinc16;
+    unit8_t hue8 = hue16/256;
+
+    brightnesstheta16 += brightnessthetainc16;
+    unit16_t b16 = sin16(brightnesstheta16) + 32768;
+
+    unit16_t bri16 = (unit32_t) ((unit32_t)b16 * (unit32_t)b16) / 65536;
+    unit8_t bri8 = (unit32_t) (((unit32_t)b16) * brightdepth) / 65536;
+    bri8 += (255 - brightdepth);
+    CRGB newcolor = CHSV(hue8, sat8, bri8);
+    unit16_t pixelnumber = i;
+    pixelnumber = (NUM_LEDS - 1) - pixelnumber;
+    nblend(leds[pixelnumber], newcolor, 64);
+  }
+}
+
+
+
+
+
+
+
+
+
